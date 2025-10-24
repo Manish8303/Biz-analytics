@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Analytics Dashboard</title>
+    <!-- Load Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind for Inter font and colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#4f46e5',
+                        'primary-dark': '#6366f1',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Load Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Chart.js Data Labels Plugin (Optional but nice) -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        /* Custom scrollbar for main content */
+        .main-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .main-content::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+            border-radius: 4px;
+        }
+        .main-content {
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db transparent;
+        }
+        [data-mode="dark"] .main-content::-webkit-scrollbar-thumb {
+            background-color: #4b5563;
+        }
+    </style>
+</head>
+
+<body class="font-sans bg-gray-100 dark:bg-gray-900 transition-colors duration-300 min-h-screen flex" data-mode="light">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-64 flex-shrink-0 bg-white dark:bg-gray-800 shadow-xl transition-all duration-300 border-r border-gray-200 dark:border-gray-700 hidden lg:block">
+        <div class="h-16 flex items-center justify-center border-b border-gray-200 dark:border-gray-700">
+            <h1 class="text-2xl font-extrabold text-primary dark:text-primary-dark">AnalyticsPro</h1>
+        </div>
+        <nav class="p-4 space-y-2">
+            <a href="#" class="flex items-center p-3 rounded-xl text-white bg-primary font-medium shadow-lg hover:bg-primary-dark transition-colors duration-200" onclick="resetFilters(); renderAll();">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.7 18.7l-3.3-3.3"/><path d="M15 15l-3 3"/><path d="M9 18l3-3"/><path d="M6 18l3-3"/></svg>
+                Dashboard
+            </a>
+            <a href="#" class="flex items-center p-3 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200" onclick="document.getElementById('file-upload').click(); return false;">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="2" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload Custom Data
+            </a>
+            <input type="file" id="file-upload" accept=".csv, .json" class="hidden" onchange="handleFileUpload(event)">
+        </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Topbar -->
+        <header class="h-16 flex items-center justify-between px-6 bg-white dark:bg-gray-800 shadow-md flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">Executive Summary</h2>
+            <div class="flex items-center space-x-4">
+                <!-- Dark Mode Toggle -->
+                <button id="dark-mode-toggle" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200" title="Toggle Dark Mode">
+                    <!-- Sun Icon (Light Mode) / Moon Icon (Dark Mode) - Default is sun -->
+                    <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.42 1.42"/><path d="M17.65 17.65l1.42 1.42"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.42-1.42"/><path d="M17.65 6.34l1.42-1.42"/></svg>
+                    <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
+                <div id="loading-spinner" class="hidden animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <main class="main-content flex-1 p-6 overflow-y-auto">
+            <!-- Alert/Message Box -->
+            <div id="message-box" class="hidden mb-4 p-4 rounded-xl text-sm transition-all duration-300" role="alert"></div>
+
+            <!-- Dynamic Filter Panel (Now with 4 filters) -->
+            <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Advanced Query Filters</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                    <!-- Region Filter -->
+                    <div class="lg:col-span-1">
+                        <label for="region-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Region</label>
+                        <select id="region-filter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="All">All Regions</option>
+                        </select>
+                    </div>
+
+                    <!-- Product Filter -->
+                    <div class="lg:col-span-1">
+                        <label for="product-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Product</label>
+                        <select id="product-filter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="All">All Products</option>
+                        </select>
+                    </div>
+
+                    <!-- NEW: Channel Filter -->
+                    <div class="lg:col-span-1">
+                        <label for="channel-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sales Channel</label>
+                        <select id="channel-filter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="All">All Channels</option>
+                        </select>
+                    </div>
+                    
+                    <!-- NEW: Category Filter -->
+                    <div class="lg:col-span-1">
+                        <label for="category-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Product Category</label>
+                        <select id="category-filter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="All">All Categories</option>
+                        </select>
+                    </div>
+
+                    <!-- Apply Button -->
+                    <button id="apply-filters-btn" onclick="applyFilters()" class="w-full sm:w-auto px-4 py-2 bg-primary text-white font-medium rounded-lg shadow-md hover:bg-primary-dark transition duration-150 ease-in-out lg:mt-6">
+                        Apply Query
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- KPI Cards -->
+            <div id="kpi-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Cards will be injected here by JS -->
+            </div>
+
+            <!-- Charts Grid 1: Core Performance -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+                <!-- Chart 1: Sales by Month (Time Series) -->
+                <div class="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Monthly Sales Trend (USD)</h3>
+                    <div class="h-96">
+                        <canvas id="salesByMonthChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Region Performance (Pie) -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Revenue by Region</h3>
+                    <div class="h-96 flex items-center justify-center">
+                        <canvas id="regionPerformanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Grid 2: Deep Dive Analysis -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Chart 3: Top Products (Horizontal Bar) -->
+                <div class="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Top 5 Products by Revenue</h3>
+                    <div class="h-80">
+                        <canvas id="topProductsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- NEW Chart 4: Revenue by Sales Channel -->
+                <div class="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Revenue by Sales Channel</h3>
+                    <div class="h-80">
+                        <canvas id="revenueByChannelChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- NEW Chart 5: Revenue by Customer Tier -->
+                <div class="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Revenue by Customer Tier</h3>
+                    <div class="h-80 flex items-center justify-center">
+                        <canvas id="salesByTierChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- 1. CONFIGURATION AND UTILITIES ---
+        const BASE_API_URL = 'http://localhost:5001/api';
+        const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+        let currentAnalyticsData = null; 
+        let currentFilters = {}; 
+        let salesChartInstance, productsChartInstance, regionChartInstance, channelChartInstance, tierChartInstance;
+
+
+        /** Toggles the loading spinner visibility. */
+        function showLoading(show) {
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) {
+                spinner.classList.toggle('hidden', !show);
+            }
+        }
+
+        /** Shows a temporary message box. */
+        function showMessage(message, type = 'success') {
+            const box = document.getElementById('message-box');
+            if (!box) return;
+
+            box.className = 'mb-4 p-4 rounded-xl text-sm transition-all duration-300';
+
+            if (type === 'success') {
+                box.classList.add('bg-green-100', 'text-green-800', 'dark:bg-green-900/50', 'dark:text-green-200');
+            } else if (type === 'error') {
+                box.classList.add('bg-red-100', 'text-red-800', 'dark:bg-red-900/50', 'dark:text-red-200');
+            } else { // info
+                box.classList.add('bg-blue-100', 'text-blue-800', 'dark:bg-blue-900/50', 'dark:text-blue-200');
+            }
+
+            box.textContent = message;
+            box.classList.remove('hidden');
+
+            setTimeout(() => {
+                box.classList.add('hidden');
+            }, 5000);
+        }
+
+        // --- 2. DYNAMIC FILTERING LOGIC ---
+
+        /** Builds a URL query string from the currentFilters object. */
+        function buildQueryString() {
+            if (Object.keys(currentFilters).length === 0) return '';
+            
+            const params = new URLSearchParams();
+            for (const [key, value] of Object.entries(currentFilters)) {
+                if (value && value !== 'All') {
+                    params.append(key, value);
+                }
+            }
+            const qs = params.toString();
+            return qs ? '?' + qs : '';
+        }
+
+        /** Captures filter selection and triggers data refresh. */
+        function applyFilters() {
+            const region = document.getElementById('region-filter').value;
+            const product = document.getElementById('product-filter').value;
+            const channel = document.getElementById('channel-filter').value;
+            const category = document.getElementById('category-filter').value;
+            
+            // Note: Customer Tier is not included here as it's purely for aggregation, not general filtering
+            currentFilters = { region, product, channel, category };
+            currentAnalyticsData = null; 
+            
+            renderAll();
+            showMessage('Advanced query applied. Dashboard data refreshed from MySQL.', 'success');
+        }
+
+        /** Resets all filters to 'All'. */
+        function resetFilters() {
+            document.getElementById('region-filter').value = 'All';
+            document.getElementById('product-filter').value = 'All';
+            document.getElementById('channel-filter').value = 'All';
+            document.getElementById('category-filter').value = 'All';
+            currentFilters = {};
+        }
+        
+        // --- 3. API CALLS ---
+
+        /** Fetches data from the Node.js backend with exponential backoff. */
+        async function fetchAnalyticsData(endpoint) {
+            // Placeholder for custom data logic (not fully implemented for this complex API)
+            if (currentAnalyticsData) {
+                return currentAnalyticsData[endpoint]; 
+            }
+
+            const url = `${BASE_API_URL}/${endpoint}${buildQueryString()}`;
+            showLoading(true);
+            try {
+                const MAX_RETRIES = 3;
+                let response;
+
+                for (let i = 0; i < MAX_RETRIES; i++) {
+                    response = await fetch(url);
+                    if (response.ok) break;
+
+                    if (i < MAX_RETRIES - 1) {
+                        const delay = Math.pow(2, i) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+                
+                if (!response || !response.ok) {
+                    const errorData = await response.json().catch(() => ({ message: 'Server responded with an error.' }));
+                    throw new Error(`HTTP error ${response.status}: ${errorData.message || 'Data retrieval failed.'}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error(`Error fetching ${url}:`, error);
+                showMessage(`Connection Error: ${error.message}. Please ensure 'node server.js' is running on port 5001 and connected to MySQL.`, 'error');
+                return {};
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        /** Loads all unique filter options from the metadata endpoint. */
+        async function loadMetadata() {
+            try {
+                const metadata = await fetch(`${BASE_API_URL}/metadata`).then(res => res.json());
+
+                // Function to populate a select element
+                const populateSelect = (id, list) => {
+                    const select = document.getElementById(id);
+                    if (!select) return;
+                    // Clear existing (keeps 'All')
+                    select.querySelectorAll('option:not([value="All"])').forEach(opt => opt.remove());
+                    list.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item;
+                        option.textContent = item;
+                        select.appendChild(option);
+                    });
+                };
+
+                populateSelect('region-filter', metadata.regions);
+                populateSelect('product-filter', metadata.products);
+                populateSelect('channel-filter', metadata.channels);
+                populateSelect('category-filter', metadata.categories); 
+                
+            } catch(e) {
+                console.error("Failed to load metadata for filters:", e);
+                // Don't show error box, as renderAll will likely show a more appropriate one
+            }
+        }
+
+        // --- 4. CHART RENDERING FUNCTIONS ---
+        
+        /** Destroys and re-initializes a chart instance. */
+        function createOrUpdateChart(instanceRef, canvasId, type, data, options) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            
+            // Destroy existing chart instance if it exists
+            if (instanceRef) {
+                 const instance = window[instanceRef];
+                 if (instance) instance.destroy();
+            }
+
+            const newInstance = new Chart(ctx, { type, data, options });
+
+            // Assign the new instance to the appropriate global variable
+            window[instanceRef] = newInstance;
+            return newInstance;
+        }
+
+        // Helper to get consistent chart colors based on dark mode
+        const getChartColors = () => {
+            const isDark = document.body.getAttribute('data-mode') === 'dark';
+            return {
+                primary: isDark ? '#6366f1' : '#4f46e5', // Indigo
+                secondary: isDark ? '#f59e0b' : '#d97706', // Amber
+                tertiary: isDark ? '#10b981' : '#059669', // Emerald
+                grid: isDark ? '#374151' : '#e5e7eb',
+                tick: isDark ? '#9ca3af' : '#6b7280',
+                backgrounds: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#f97316', '#a855f7'] 
+            };
+        };
+
+        async function renderKPIs() {
+            const kpis = await fetchAnalyticsData('kpis');
+            const container = document.getElementById('kpi-cards');
+            
+            // Check for empty or invalid data
+            if (!container || Object.keys(kpis).length === 0 || kpis.revenue === undefined || kpis.revenue === null || kpis.revenue == 0) {
+                 container.innerHTML = '<p class="lg:col-span-4 text-center text-gray-500 dark:text-gray-400">KPI data is not available for the selected query.</p>';
+                 return;
+            }
+
+            const isGrowthPositive = kpis.growth >= 0;
+            const growthColor = isGrowthPositive ? 'text-green-500' : 'text-red-500';
+
+            const kpiDefinitions = [
+                { title: 'Total Revenue', value: currencyFormatter.format(kpis.revenue), icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' },
+                { title: 'YTD Growth', value: `${kpis.growth}%`, icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 ${growthColor}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4.5"/><path d="M12 17V3"/><path d="M6 10l6-6 6 6"/></svg>` },
+                { title: 'Active Customers', value: kpis.customers.toLocaleString(), icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2"/><path d="M12 9A4 4 0 1 0 12 1a4 4 0 0 0 0 8z"/><path d="M21 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/></svg>' },
+                { title: 'Total Orders', value: kpis.orders.toLocaleString(), icon: '<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M17 15h1a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v5a2 2 0 0 0 2 2h1"/><path d="M15 17L5 17"/><path d="M5 12h14"/></svg>' }
+            ];
+
+            container.innerHTML = kpiDefinitions.map(kpi => `
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-lg flex items-center justify-between border border-gray-200 dark:border-gray-700">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">${kpi.title}</p>
+                        <p class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">${kpi.value}</p>
+                    </div>
+                    <div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-xl">
+                        ${kpi.icon}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function renderSalesByMonthChart() {
+            const salesData = await fetchAnalyticsData('sales');
+            const colors = getChartColors();
+
+            if (!salesData || !salesData.labels || salesData.labels.length === 0) return;
+
+            const data = {
+                labels: salesData.labels,
+                datasets: [{
+                    label: 'Monthly Sales (USD)',
+                    data: salesData.data,
+                    backgroundColor: colors.primary,
+                    borderColor: colors.primary,
+                    borderWidth: 2,
+                    borderRadius: 4,
+                }]
+            };
+
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: colors.grid },
+                        ticks: { color: colors.tick, callback: value => currencyFormatter.format(value).replace('$', '$') }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: colors.tick }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (context) => context.dataset.label + ': ' + currencyFormatter.format(context.raw) } }
+                }
+            };
+            createOrUpdateChart('salesChartInstance', 'salesByMonthChart', 'bar', data, options);
+        }
+
+        async function renderTopProductsChart() {
+            const productData = await fetchAnalyticsData('products');
+            const colors = getChartColors();
+
+            if (!productData || !productData.labels || productData.labels.length === 0) return;
+
+            const data = {
+                labels: productData.labels,
+                datasets: [{
+                    label: 'Revenue (USD)',
+                    data: productData.data,
+                    backgroundColor: colors.tertiary, // Emerald
+                    borderColor: colors.tertiary,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            };
+
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: colors.grid },
+                        ticks: { color: colors.tick, callback: value => currencyFormatter.format(value).replace('$', '$') }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: colors.tick }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (context) => context.dataset.label + ': ' + currencyFormatter.format(context.raw) } }
+                }
+            };
+            createOrUpdateChart('productsChartInstance', 'topProductsChart', 'bar', data, options);
+        }
+
+        async function renderRegionPerformanceChart() {
+            const regionData = await fetchAnalyticsData('regions');
+            const colors = getChartColors();
+
+            if (!regionData || !regionData.labels || regionData.labels.length === 0) return;
+
+            const data = {
+                labels: regionData.labels,
+                datasets: [{
+                    data: regionData.data,
+                    backgroundColor: colors.backgrounds.slice(0, regionData.labels.length),
+                    hoverOffset: 8
+                }]
+            };
+
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: colors.tick }
+                    },
+                    tooltip: { callbacks: { label: (context) => `${context.label}: ${currencyFormatter.format(context.raw)}` } }
+                }
+            };
+            createOrUpdateChart('regionChartInstance', 'regionPerformanceChart', 'pie', data, options);
+        }
+
+        // --- NEW CHART 4: Revenue by Sales Channel ---
+        async function renderRevenueByChannelChart() {
+            const channelData = await fetchAnalyticsData('channels');
+            const colors = getChartColors();
+
+            if (!channelData || !channelData.labels || channelData.labels.length === 0) return;
+
+            const data = {
+                labels: channelData.labels,
+                datasets: [{
+                    label: 'Revenue (USD)',
+                    data: channelData.data,
+                    backgroundColor: colors.backgrounds.slice(0, channelData.labels.length),
+                    borderColor: colors.backgrounds.slice(0, channelData.labels.length),
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            };
+
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: colors.grid },
+                        ticks: { color: colors.tick, callback: value => currencyFormatter.format(value).replace('$', '$') }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: colors.tick }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (context) => context.dataset.label + ': ' + currencyFormatter.format(context.raw) } }
+                }
+            };
+            createOrUpdateChart('channelChartInstance', 'revenueByChannelChart', 'bar', data, options);
+        }
+
+        // --- NEW CHART 5: Revenue by Customer Tier ---
+        async function renderSalesByTierChart() {
+            const tierData = await fetchAnalyticsData('tiers');
+            const colors = getChartColors();
+
+            if (!tierData || !tierData.labels || tierData.labels.length === 0) return;
+
+            const data = {
+                labels: tierData.labels,
+                datasets: [{
+                    data: tierData.data,
+                    // Use fixed colors for tiers to maintain consistency (Platinum is always primary, etc.)
+                    backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444'], 
+                    hoverOffset: 8
+                }]
+            };
+
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: colors.tick }
+                    },
+                    tooltip: { callbacks: { label: (context) => `${context.label}: ${currencyFormatter.format(context.raw)}` } }
+                }
+            };
+
+            createOrUpdateChart('tierChartInstance', 'salesByTierChart', 'doughnut', data, options);
+        }
+        
+        /** Renders all charts and KPIs */
+        function renderAll() {
+            renderKPIs();
+            renderSalesByMonthChart();
+            renderTopProductsChart();
+            renderRegionPerformanceChart();
+            renderRevenueByChannelChart(); 
+            renderSalesByTierChart();
+        }
+
+        // --- 5. DATA UPLOAD LOGIC (Placeholder for custom data structure) ---
+        
+        /** Simplified custom data processing since the structure is complex now. */
+        function handleFileUpload(event) {
+            showMessage(`File upload is only a mockup for API-less operation. For this advanced, MySQL-backed dashboard, please use the Dynamic Filters and update data directly in MySQL.`, 'info');
+        }
+
+        // --- 6. DARK MODE & INITIALIZATION ---
+
+        function setupDarkMode() {
+            const toggleButton = document.getElementById('dark-mode-toggle');
+            const body = document.body;
+            const sunIcon = document.getElementById('sun-icon');
+            const moonIcon = document.getElementById('moon-icon');
+
+            const savedMode = localStorage.getItem('theme') || 'light';
+            setMode(savedMode);
+
+            function setMode(mode) {
+                if (mode === 'dark') {
+                    body.setAttribute('data-mode', 'dark');
+                    body.classList.add('dark');
+                    sunIcon.classList.add('hidden');
+                    moonIcon.classList.remove('hidden');
+                } else {
+                    body.setAttribute('data-mode', 'light');
+                    body.classList.remove('dark');
+                    sunIcon.classList.remove('hidden');
+                    moonIcon.classList.add('hidden');
+                }
+                localStorage.setItem('theme', mode);
+            }
+
+            toggleButton.addEventListener('click', () => {
+                const newMode = body.getAttribute('data-mode') === 'dark' ? 'light' : 'dark';
+                setMode(newMode);
+                renderAll();
+            });
+        }
+
+        window.onload = function() {
+            setupDarkMode();
+            loadMetadata(); 
+            renderAll(); 
+            showMessage('Dashboard loaded with advanced analytics capabilities. Try combining the new filters!', 'success');
+        };
+    </script>
+</body>
+</html>
