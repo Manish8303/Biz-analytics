@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BizSync Analytics | Intelligent Business Dashboard</title>
+
+  <!-- Bootstrap + Tailwind -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- AOS (Animate On Scroll) -->
+  <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet">
+
+  <!-- Particles.js -->
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+
+  <style>
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      margin: 0;
+      padding: 0;
+    }
+    h1, h2, h3, h5 { font-family: 'Poppins', sans-serif; }
+
+    /* ==== HERO ==== */
+    #hero-canvas { position: absolute; top:0; left:0; width:100%; height:100%; opacity:0.15; }
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      background: linear-gradient(-45deg, #1e3a8a, #3b82f6, #1e40af, #2563eb);
+      background-size: 400% 400%;
+      animation: gradientShift 12s ease infinite;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: hidden;
+    }
+    @keyframes gradientShift {
+      0%   {background-position:0% 50%;}
+      50%  {background-position:100% 50%;}
+      100% {background-position:0% 50%;}
+    }
+
+    /* ==== GLASS CARDS ==== */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      border-radius: 1rem;
+      transition: all .3s ease;
+      color: #1e293b;
+    }
+    .glass-card:hover {
+      transform: translateY(-12px) scale(1.02);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    /* ==== SECTION TITLES ==== */
+    .section-title {
+      position: relative;
+      display: inline-block;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      color: #1e293b;
+    }
+    .section-title::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 4px;
+      background: #3b82f6;
+      border-radius: 2px;
+    }
+
+    /* ==== BUTTONS ==== */
+    .btn-animated {
+      position: relative;
+      overflow: hidden;
+      transition: all .3s ease;
+    }
+    .btn-animated::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
+      transition: .6s;
+    }
+    .btn-animated:hover::before { left: 100%; }
+
+    /* ==== DARK MODE ==== */
+    .dark-mode {
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .dark-mode .navbar { background: rgba(15,23,42,.95) !important; }
+    .dark-mode .glass-card {
+      background: rgba(30,41,55,.85);
+      border-color: rgba(255,255,255,.1);
+      color: #e2e8f0;
+    }
+    .dark-mode .section-title { color: #e2e8f0; }
+    .dark-mode .section-title::after { background: #60a5fa; }
+    .dark-mode .text-gray-700 { color: #94a3b8 !important; }
+    .dark-mode .card, .dark-mode .table tbody { background: #1e2937; color: #e2e8f0; }
+    .dark-mode .nav-link { color: #e2e8f0; }
+    .dark-mode .nav-link:hover { color: #60a5fa; }
+
+    /* ==== NAV ==== */
+    .navbar.scrolled {
+      background: rgba(255,255,255,.95) !important;
+      backdrop-filter: blur(10px);
+    }
+    .nav-link {
+      position: relative;
+      color: #1e293b;
+      transition: color .3s;
+    }
+    .nav-link::after {
+      content: ''; position: absolute; bottom: -4px; left: 0;
+      width: 0; height: 2px; background: #3b82f6;
+      transition: width .3s ease;
+    }
+    .nav-link:hover::after { width: 100%; }
+    .nav-link:hover { color: #3b82f6; }
+
+    /* ==== ICON PULSE ==== */
+    .icon-pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+
+    /* ==== TABLE ==== */
+    .table thead { background: linear-gradient(to right, #3b82f6, #1e40af); }
+  </style>
+</head>
+<body class="relative">
+
+  <!-- Dark Mode Toggle -->
+  <button id="darkToggle" class="fixed top-4 right-4 z-50 p-2 rounded-full bg-white shadow-lg transition-transform hover:scale-110">
+    <span class="text-xl">Moon</span>
+  </button>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg fixed-top transition-all duration-300 bg-white shadow-sm" id="mainNav">
+    <div class="container">
+      <a class="navbar-brand fw-bold text-primary" href="#home">BizSync Analytics</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto gap-2">
+          <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
+          <li class="nav-item"><a class="nav-link" href="#how">How It Works</a></li>
+          <li class="nav-item"><a class="nav-link" href="#tech">Tech Stack</a></li>
+          <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section id="home" class="hero">
+    <div id="hero-canvas"></div>
+    <div class="container relative z-10 px-4" data-aos="fade-up">
+      <h1 class="text-5xl md:text-6xl font-extrabold mb-4 drop-shadow-lg">BizSync Analytics</h1>
+      <p class="text-lg md:text-xl mb-8 max-w-3xl mx-auto opacity-90">
+        A Real-Time Business Intelligence Dashboard designed to unify, visualize, and analyze operational data for smarter decision-making.
+      </p>
+      <a href="#about" class="btn btn-light btn-lg btn-animated shadow-lg px-6">Explore More</a>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section id="about" class="py-20 container" data-aos="fade-up" data-aos-delay="100">
+    <h2 class="section-title text-4xl text-center">About the Project</h2>
+    <p class="text-center text-gray-700 max-w-4xl mx-auto leading-relaxed">
+      Businesses today face massive volumes of operational data — from sales figures to employee performance records. Traditional reporting systems are slow and error-prone. <strong class="text-primary">BizSync Analytics</strong> solves this by providing a unified, intelligent dashboard capable of real-time analysis and visualization. By synchronizing data from multiple sources, the system offers a holistic overview of business performance and empowers management with instant insights.
+    </p>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="py-20 bg-gradient-to-b from-gray-50 to-white">
+    <div class="container">
+      <h2 class="section-title text-4xl text-center mb-12">Key Features</h2>
+      <div class="row g-5">
+        <!-- Feature 1 -->
+        <div class="col-md-6 col-lg-4" data-aos="zoom-in" data-aos-delay="100">
+          <div class="glass-card p-5 h-100">
+            <div class="icon-pulse text-4xl mb-3">Lock</div>
+            <h5 class="fw-bold mb-2">Secure Authentication</h5>
+            <p class="opacity-80">Protects user data using JWT and bcrypt-based authentication.</p>
+          </div>
+        </div>
+        <!-- Feature 2 -->
+        <div class="col-md-6 col-lg-4" data-aos="zoom-in" data-aos-delay="200">
+          <div class="glass-card p-5 h-100">
+            <div class="icon-pulse text-4xl mb-3">Chart</div>
+            <h5 class="fw-bold mb-2">Real-Time Data Visualization</h5>
+            <p class="opacity-80">Instantly view KPIs, sales growth, and departmental performance in one dashboard.</p>
+          </div>
+        </div>
+        <!-- Feature 3 -->
+        <div class="col-md-6 col-lg-4" data-aos="zoom-in" data-aos-delay="300">
+          <div class="glass-card p-5 h-100">
+            <div class="icon-pulse text-4xl mb-3">Briefcase</div>
+            <h5 class="fw-bold mb-2">Multi-Source Integration</h5>
+            <p class="opacity-80">Centralizes and syncs operational data from multiple sources into a unified system.</p>
+          </div>
+        </div>
+        <!-- Feature 4 -->
+        <div class="col-md-6 col-lg-4" data-aos="zoom-in" data-aos-delay="400">
+          <div class="glass-card p-5 h-100">
+            <div class="icon-pulse text-4xl mb-3">Lightning</div>
+            <h5 class="fw-bold mb-2">Fast Data Processing</h5>
+            <p class="opacity-80">Powered by Node.js and MySQL connection pooling for optimized performance.</p>
+          </div>
+        </div>
+        <!-- Feature 5 -->
+        <div class="col-md-6 col-lg-4" data-aos="zoom-in" data-aos-delay="500">
+          <div class="glass-card p-5 h-100">
+            <div class="icon-pulse text-4xl mb-3">Graph Up</div>
+            <h5 class="fw-bold mb-2">Interactive Interface</h5>
+            <p class="opacity-80">User-friendly dashboard with clean charts and interactive filters.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section id="how" class="py-20 container" data-aos="fade-up">
+    <h2 class="section-title text-4xl text-center mb-12">How It Works</h2>
+    <p class="text-center text-gray-700 max-w-4xl mx-auto leading-relaxed">
+      BizSync Analytics connects securely to a MySQL database, extracts data through Express APIs, and visualizes it through an interactive dashboard. Users can log in, monitor operations, and analyze performance <span class="text-primary font-semibold">in seconds</span>.
+    </p>
+  </section>
+
+  <!-- Tech Stack -->
+  <section id="tech" class="py-20 bg-gray-100" data-aos="fade-up">
+    <div class="container">
+      <h2 class="section-title text-4xl text-center mb-12">Tech Stack</h2>
+      <div class="overflow-x-auto">
+        <table class="table table-bordered text-center align-middle w-full mx-auto max-w-3xl">
+          <thead class="text-white">
+            <tr><th>Component</th><th>Technology</th></tr>
+          </thead>
+          <tbody class="bg-white dark-mode:bg-[#1e2937]">
+            <tr><td>Backend</td><td>Node.js + Express</td></tr>
+            <tr><td>Database</td><td>MySQL</td></tr>
+            <tr><td>Authentication</td><td>JWT + Bcrypt</td></tr>
+            <tr><td>Frontend</td><td>HTML, CSS, JavaScript</td></tr>
+            <tr><td>Styling</td><td>Tailwind CSS + Bootstrap</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact" class="py-20 container text-center" data-aos="fade-up">
+    <h2 class="section-title text-4xl mb-8">Contact / Developer</h2>
+    <p class="text-gray-700 mb-6">Developed by <strong class="text-primary">Manish Singh & Gurpreet Singh Kang</strong></p>
+    <div class="flex justify-center gap-4 flex-wrap">
+      <a href="https://github.com/Manish8303/Biz-analytics" class="btn btn-outline-primary btn-animated">GitHub</a>
+      <a href="https://www.linkedin.com/in/manish-singh-106379313/" class="btn btn-outline-secondary btn-animated">LinkedIn</a>
+      <a href="mailto:manishsingh8303@gmail.com" class="btn btn-outline-dark btn-animated">Email</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-white py-6 text-center">
+    <p class="mb-0">© 2025 BizSync Analytics | All Rights Reserved</p>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+  <script>
+    // Initialize AOS
+    AOS.init({ once: true, duration: 800 });
+
+    // Navbar scroll effect
+    window.addEventListener('scroll', () => {
+      document.getElementById('mainNav').classList.toggle('scrolled', window.scrollY > 50);
+    });
+
+    // Dark mode toggle
+    const toggle = document.getElementById('darkToggle');
+    toggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark-mode');
+      toggle.innerHTML = document.documentElement.classList.contains('dark-mode') ? 'Sun' : 'Moon';
+    });
+
+    // Particles.js in Hero
+    particlesJS('hero-canvas', {
+      particles: {
+        number: { value: 80, density: { enable: true, value_area: 800 } },
+        color: { value: '#ffffff' },
+        shape: { type: 'circle' },
+        opacity: { value: 0.5, random: true },
+        size: { value: 3, random: true },
+        line_linked: { enable: false },
+        move: { enable: true, speed: 1, direction: 'none', random: false, straight: false, out_mode: 'out', bounce: false }
+      },
+      interactivity: {
+        detect_on: 'canvas',
+        events: { onhover: { enable: true, mode: 'repulse' } }
+      },
+      retina_detect: true
+    });
+  </script>
+</body>
+</html>
